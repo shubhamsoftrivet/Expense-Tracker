@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Roommate Expense Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f8f9fa;
+    }
+    h2, h3 {
+      color: #333;
+    }
+    input, button {
+      font-size: 1rem;
+    }
+    input {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 16px;
+      background-color: #007bff;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .user-list, .summary {
+      margin-top: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .user-item {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+    .user-item span {
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (min-width: 600px) {
+      .user-item {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .form-group {
+        flex-direction: row;
+        align-items: center;
+      }
+      .form-group input {
+        width: 40%;
+      }
+      button {
+        width: auto;
+      }
+    }
+    .transaction {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Roommate Expense Tracker</h2>
+
+  <!-- Add User Form -->
+  <div class="form-group">
+    <input type="text" id="userName" placeholder="Name">
+    <input type="text" id="userMobile" placeholder="Mobile Number">
+    <button onclick="addUser()">Add User</button>
+  </div>
+
+  <!-- Expense Input Dashboard -->
+  <div class="user-list" id="userList">
+    <h3>Expense Input</h3>
+    <!-- Users will be added here -->
+  </div>
+
+  <!-- Calculate and Summary -->
+  <button onclick="calculate()">Calculate</button>
+
+  <div class="summary" id="summary">
+    <!-- Summary output -->
+  </div>
+
+  <script>
+    const users = [];
+
+    function addUser() {
+      const name = document.getElementById("userName").value.trim();
+      const mobile = document.getElementById("userMobile").value.trim();
+
+      if (!name || !mobile) {
+        alert("Please enter both name and mobile number.");
+        return;
+      }
+
+      if (users.some(user => user.mobile === mobile)) {
+        alert("Mobile number already exists.");
+        return;
+      }
+
+      users.push({ name, mobile, expense: 0 });
+
+      updateUserList();
+      document.getElementById("userName").value = '';
+      document.getElementById("userMobile").value = '';
+    }
+
+    function updateUserList() {
+      const container = document.getElementById("userList");
+      container.innerHTML = '<h3>Expense Input</h3>';
+
+      users.forEach((user, index) => {
+        const div = document.createElement("div");
+        div.className = "user-item";
+        div.innerHTML = `
+          <span>${user.name} (${user.mobile})</span>
+          <input type="number" id="expense-${index}" placeholder="₹0" oninput="updateExpense(${index}, this.value)">
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateExpense(index, value) {
+      users[index].expense = parseFloat(value) || 0;
+    }
+
+    function calculate() {
+      const total = users.reduce((sum, u) => sum + u.expense, 0);
+      const share = total / users.length;
+
+      const balances = users.map(u => ({
+        name: u.name,
+        balance: +(u.expense - share).toFixed(2)
+      }));
+
+      const creditors = balances.filter(b => b.balance > 0).sort((a, b) => b.balance - a.balance);
+      const debtors = balances.filter(b => b.balance < 0).sort((a, b) => a.balance - b.balance);
+
+      const transactions = [];
+
+      while (debtors.length && creditors.length) {
+        const debtor = debtors[0];
+        const creditor = creditors[0];
+        const amount = Math.min(-debtor.balance, creditor.balance);
+
+        transactions.push(`<div class="transaction">${debtor.name} will give ₹${amount.toFixed(2)} to ${creditor.name}</div>`);
+
+        debtor.balance += amount;
+        creditor.balance -= amount;
+
+        if (Math.abs(debtor.balance) < 0.01) debtors.shift();
+        if (Math.abs(creditor.balance) < 0.01) creditors.shift();
+      }
+
+      document.getElementById("summary").innerHTML = `
+        <h3>Summary</h3>
+        <p><strong>Total Expense:</strong> ₹${total.toFixed(2)}</p>
+        <p><strong>Per Person Share:</strong> ₹${share.toFixed(2)}</p>
+        <h4>Settlements:</h4>
+        ${transactions.length ? transactions.join('') : '<p>All are settled up!</p>'}
+      `;
+    }
+  </script>
+
+</body>
+</html>
